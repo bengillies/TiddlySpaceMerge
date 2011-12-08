@@ -92,11 +92,71 @@ window.tiddlymerge = (function() {
 		return renderTid;
 	};
 
+	var _createPatch = function(diffTid) {
+		var patchTid = {};
+		patchTid.title = dmp.patch_make(diffTid.title);
+		patchTid.text = dmp.patch_make(diffTid.text);
+		patchTid.tags = [];
+		patchTid.fields = {};
+		$.each(diffTid.tags, function(i, tag) {
+			patchTid.tags.push(dmp.patch_make(tag));
+		});
+		$.each(diffTid.fields, function(k, v) {
+			patchTid.fields[k] = dmp.patch_make(v);
+		});
+
+		return patchTid;
+	};
+
+	var merge = function(diffTid, tid) {
+		var patchTid = _createPatch(diffTid),
+			tmpMergeRes, i, l, k, v, tag;
+		
+		var mergeTid = new tiddlyweb.Tiddler('', bag);
+		tmpMergeRes = dmp.patch_apply(patchTid.title, tid.title);
+		if (!~tmpMergeRes[1].indexOf(false)) {
+			mergeTid.title = tmpMergeRes[0];
+		} else {
+			return null;
+		}
+		tmpMergeRes = dmp.patch_apply(patchTid.text, tid.text);
+		if (!~tmpMergeRes[1].indexOf(false)) {
+			mergeTid.text = tmpMergeRes[0];
+		} else {
+			return null;
+		}
+		mergeTid.tags = [];
+		mergeTid.fields = {};
+		for (i = 0, l = patchTid.tags.length; i < l; i++) {
+			tag = patchTid.tags[i];
+			tmpMergeRes = dmp.patch_apply(tag, tid.tags[i] || '');
+			if (!~tmpMergeRes[1].indexOf(false)) {
+				mergeTid.tags.push(tmpMergeRes[0]);
+			} else {
+				return null;
+			}
+		}
+		for (k in patchTid.fields) {
+			if (patchTid.fields.hasOwnProperty(k)) {
+				v = patchTid.fields[k];
+				tmpMergeRes = dmp.patch_apply(v, tid.fields[k] || '');
+				if (!~tmpMergeRes[1].indexOf(false)) {
+					mergeTid.fields[k] = tmpMergeRes[0];
+				} else {
+					return null;
+				}
+			}
+		}
+
+		return mergeTid;
+	};
+
 	return {
 		getPullRequests: getPullRequests,
 		setBag: setBag,
 		diff: diff,
-		renderDiff: renderDiff
+		renderDiff: renderDiff,
+		merge: merge
 	};
 
 }());

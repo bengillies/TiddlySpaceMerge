@@ -64,3 +64,40 @@ test('html diff', function() {
 
 	strictEqual(prettyDiff.fields.myField, '<span>fi</span><del style=\"background:#ffe6e6;\">l</del><span>e</span><ins style=\"background:#e6ffe6;\">l</ins><span>d text</span>', 'myField is pretty printed');
 });
+
+module('merging', {
+	setup: function() {
+		tiddlymerge.setBag(new tiddlyweb.Bag('foo_public', '/'));
+	}
+});
+
+test('merge success', function() {
+	var tid1 = $.fixtures.localTiddlers[0];
+	var tid2 = $.fixtures.remoteTiddlers[0];
+	var diffTid = tiddlymerge.diff(tid1, tid2);
+	var mergeTid = tiddlymerge.merge(diffTid, tid1);
+	
+	strictEqual(mergeTid instanceof tiddlyweb.Tiddler, true, 'mergeTid is a tiddler');
+	strictEqual(mergeTid.bag.name, 'foo_public', 'mergeTid has the new bag pre-set');
+
+	// remove expected differences between tiddlers
+	delete mergeTid['bag'];
+	delete tid2['bag'];
+	delete tid2.fields['_push'];
+	delete tid2.fields['server.foo'];
+
+	deepEqual(mergeTid, tid2, 'tid1 has been merged');
+});
+
+test('merge failure', function() {
+	var tid1 = $.fixtures.localTiddlers[1];
+	var tid2 = $.fixtures.remoteTiddlers[1];
+	var diffTid = tiddlymerge.diff(tid1, tid2);
+
+	// alter tid1 so the merge will fail
+	tid1.text = '';
+
+	var mergeTid = tiddlymerge.merge(diffTid, tid1);
+
+	strictEqual(mergeTid, null, 'The merge failed');
+});
